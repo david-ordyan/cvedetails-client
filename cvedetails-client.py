@@ -102,7 +102,7 @@ class CVEdetailsClient:
         if self.vendor and self.product and self.version:
             self.cvedetails_url = "http://www.cvedetails.com/version-search.php?vendor=" + self.vendor + "&product=" + product + "&version=" + version
             page_type = self.determine_page_type()
-            logger.ifno(page_type)
+            logger.info(page_type)
             if page_type == 'error':
                 self.result = None
             elif page_type == 'search_page':

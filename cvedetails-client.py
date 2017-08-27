@@ -64,7 +64,7 @@ class CVEdetailsClient:
             return "error"
 
     def search_page(self):
-        logger.warning(self.cvedetails_url)
+        logger.info(self.cvedetails_url)
         rows_in_table = len(self.g.doc.select('//table[@class="searchresults"]/tr')[1:])
         for row_number in range(rows_in_table):
             patch_from_html = self.g.doc.select('//table[@class="searchresults"]/tr/td')[5 + row_number * 9:][0]
@@ -82,7 +82,7 @@ class CVEdetailsClient:
                 logging.warning('Cant find match for {0}:{1}:{2}:{3}'.format(self.vendor, self.product , self.version, self.patch,))
 
     def vulns_page(self):
-        logger.warning(self.cvedetails_url)
+        logger.info(self.cvedetails_url)
         html_with_pages_links = self.g.doc.select('//div[@class="paging"]/a')[:]
         pages_links = [(link.html().split(" ")[1]) for link in html_with_pages_links]
         for page in pages_links:
@@ -102,7 +102,7 @@ class CVEdetailsClient:
         if self.vendor and self.product and self.version:
             self.cvedetails_url = "http://www.cvedetails.com/version-search.php?vendor=" + self.vendor + "&product=" + product + "&version=" + version
             page_type = self.determine_page_type()
-            logger.warning(page_type)
+            logger.ifno(page_type)
             if page_type == 'error':
                 self.result = None
             elif page_type == 'search_page':

@@ -3,7 +3,8 @@ import re, logging, argparse
 import grab
 
 args_parser = argparse.ArgumentParser(
-    description='Search cvedetails.com for CVEs by vendor, product and version, optionally by patch.')
+    description='Search cvedetails.com for CVEs by vendor, product and version, optionally by patch.',
+    epilog='Multiword arguments should be in quotes')
 args_parser.add_argument('vendor')
 args_parser.add_argument('product')
 args_parser.add_argument('version')
@@ -18,19 +19,22 @@ class CVEDetailsClient:
 
     search_url = "http://www.cvedetails.com/version-search.php?vendor={vendor}&product={product}&version={version}"
 
-    def __init__(self, **kwargs):
-        self.result = None
+    def __init__(self):
         self.g = grab.Grab(timeout=5, connect_timeout=5, user_agent='METASCAN')
-        page_type = self.determine_page_type(self.search_url.format(**kwargs))
+        
+    def run(self, vendor, product, version, patch):
+        page_type = self.determine_page_type(self.search_url.format(vendor=vendor, product=product, version=version))
         logger.info(page_type)
         if page_type == 'error':
-            self.result = None
+            return None
         elif page_type == 'search_page':
-            self.search_page(**kwargs)
-            self.result = self.make_json_from_page()
+            self.search_page(vendor, product, version, patch)
+            return self.make_json_from_page()
         elif page_type == 'vulns_page':
             self.vulns_page()
-            self.result = self.make_json_from_page()
+            return self.make_json_from_page()
+        else:
+            return None
 
     def get_references_from_cve_page(self, cve_id):
         cve_url = "http://www.cvedetails.com/cve/" + cve_id
@@ -60,9 +64,9 @@ class CVEDetailsClient:
                 cve_id = row_map['CVEID']
                 if cve_id:
                     row_map['references'] = self.get_references_from_cve_page(cve_id)
-            except Exception as e:
+            except:
                 logger.warning("SOMETHING GONE WRONG")
-                raise e
+                raise
             # result_map['CVES'].append(row_map['CVE ID']) Если понадобится список всех CVE отдельным листом
             result_map[cve_id] = row_map
         return result_map
@@ -99,7 +103,7 @@ class CVEDetailsClient:
                 except Exception as e:
                     logging.critical('Cant fetch {0} with error {1}'.format(patch_url, e))
             else:
-                raise RuntimeError('Cant find match for {0}:{1}:{2}:{3}'.format(vendor, product, version, patch))
+                logging.warning('Cant find match for {0}:{1}:{2}:{3}'.format(vendor, product, version, patch))
 
     def vulns_page(self):
         html_with_pages_links = self.g.doc.select('//div[@class="paging"]/a')[:]
@@ -110,9 +114,11 @@ class CVEDetailsClient:
             except Exception as e:
                 logging.warning('Cant fetch {0} with error {1}'.format(page, e))
 
+def main(**args):
+    return CVEDetailsClient().run(**args)
 
 if __name__ == '__main__':
     args = args_parser.parse_args()
-    client = CVEDetailsClient(**vars(args))
-    for _, v in client.result.items():
+    result = main(**vars(args))
+    for _, v in result.items():
         print("{CVEID} TYPE: {VulnerabilityTypes}, SCORE: {Score}, PUBLISHED: {PublishDate} \nEXPLOITS: {Exploits}\n{Text} \n".format(**v))
